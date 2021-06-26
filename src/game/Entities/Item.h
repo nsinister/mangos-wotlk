@@ -384,6 +384,16 @@ class Item : public Object
 
         bool IsUsedInSpell() const { return m_usedInSpell; }
         void SetUsedInSpell(bool state) { m_usedInSpell = state; }
+
+        // transmogrification
+        uint32 GetFakeEntry();
+        bool DeleteFakeEntry();
+        static void DeleteFakeFromDB(uint32 lowGUID);
+        void SetFakeEntry(uint32 entry);
+        bool HasGoodFakeQuality();
+        Bag* ToBag() { if (IsBag()) return reinterpret_cast<Bag*>(this); else return NULL; }
+        const Bag* ToBag() const { if (IsBag()) return reinterpret_cast<const Bag*>(this); else return NULL; }
+        
     private:
         std::string m_text;
         uint8 m_slot;

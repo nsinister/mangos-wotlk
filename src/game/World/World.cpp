@@ -1052,6 +1052,9 @@ void World::SetInitialWorldSettings()
     sLog.outString("Loading Item expire converts...");      // must be after LoadItemPrototypes
     sObjectMgr.LoadItemExpireConverts();
 
+    sLog.outString("Loading Transmogrifications...");
+    sObjectMgr.LoadTransmogrifications();
+
     sLog.outString("Loading Creature Model Based Info Data...");
     sObjectMgr.LoadCreatureModelInfo();
 

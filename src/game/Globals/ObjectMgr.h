@@ -497,6 +497,8 @@ class ObjectMgr
         ObjectMgr();
         ~ObjectMgr();
 
+        ItemFakeEntryContainer _itemFakeEntryStore;
+
         typedef std::unordered_map<uint32, Item*> ItemMap;
 
         typedef std::unordered_map<uint32, Group*> GroupMap;
@@ -730,6 +732,7 @@ class ObjectMgr
         void LoadItemExpireConverts();
         void LoadItemRequiredTarget();
         void LoadItemLocales();
+        void LoadTransmogrifications(); //transmogrification
         void LoadQuestLocales();
         void LoadGossipTextLocales();
         void LoadQuestgiverGreeting();

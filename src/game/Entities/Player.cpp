@@ -11665,9 +11665,17 @@ void Player::SetVisibleItemSlot(uint8 slot, Item* pItem)
 {
     if (pItem)
     {
-        SetUInt32Value(PLAYER_VISIBLE_ITEM_1_ENTRYID + (slot * 2), pItem->GetEntry());
-        SetUInt16Value(PLAYER_VISIBLE_ITEM_1_ENCHANTMENT + (slot * 2), 0, pItem->GetEnchantmentId(PERM_ENCHANTMENT_SLOT));
-        SetUInt16Value(PLAYER_VISIBLE_ITEM_1_ENCHANTMENT + (slot * 2), 1, pItem->GetEnchantmentId(TEMP_ENCHANTMENT_SLOT));
+        // Transmogrification
+        if (pItem->GetFakeEntry())
+        {
+            SetUInt32Value(PLAYER_VISIBLE_ITEM_1_ENTRYID + (slot * 2), pItem->GetFakeEntry());
+        }
+        else
+        {
+            SetUInt32Value(PLAYER_VISIBLE_ITEM_1_ENTRYID + (slot * 2), pItem->GetEntry());
+            SetUInt16Value(PLAYER_VISIBLE_ITEM_1_ENCHANTMENT + (slot * 2), 0, pItem->GetEnchantmentId(PERM_ENCHANTMENT_SLOT));
+            SetUInt16Value(PLAYER_VISIBLE_ITEM_1_ENCHANTMENT + (slot * 2), 1, pItem->GetEnchantmentId(TEMP_ENCHANTMENT_SLOT));
+        }
     }
     else
     {
@@ -11793,6 +11801,7 @@ void Player::MoveItemFromInventory(uint8 bag, uint8 slot, bool update)
 {
     if (Item* it = GetItemByPos(bag, slot))
     {
+        it->DeleteFakeFromDB(it->GetGUIDLow()); // transmogrification
         ItemRemovedQuestCheck(it->GetEntry(), it->GetCount());
         RemoveItem(bag, slot, update);
 
@@ -19590,6 +19599,60 @@ void Player::ResetMap()
     m_clientGUIDs.clear();
 }
 
+
+uint32 Player::SuitableForTransmogrification(Item* oldItem, Item* newItem) //transmogrification
+{
+    if (!newItem->HasGoodFakeQuality())
+        return ERR_FAKE_NEW_BAD_QUALITY;
+    if (!oldItem->HasGoodFakeQuality())
+        return ERR_FAKE_OLD_BAD_QUALITY;
+
+    if (oldItem->GetProto()->DisplayInfoID == newItem->GetProto()->DisplayInfoID)
+        return ERR_FAKE_SAME_DISPLAY;
+    if (oldItem->GetFakeEntry())
+        if(const ItemPrototype* FakeItemTemplate = sObjectMgr.GetItemPrototype(oldItem->GetFakeEntry()))
+            if(FakeItemTemplate->DisplayInfoID == newItem->GetProto()->DisplayInfoID)
+                return ERR_FAKE_SAME_DISPLAY_FAKE;
+    if (CanUseItem(newItem, false) != EQUIP_ERR_OK)
+        return ERR_FAKE_CANT_USE;
+    uint32 newClass = newItem->GetProto()->Class;
+    uint32 oldClass = oldItem->GetProto()->Class;
+    uint32 newSubClass = newItem->GetProto()->SubClass;
+    uint32 oldSubClass = oldItem->GetProto()->SubClass;
+    uint32 newInventorytype = newItem->GetProto()->InventoryType;
+    uint32 oldInventorytype = oldItem->GetProto()->InventoryType;
+    if (newClass != oldClass)
+        return ERR_FAKE_NOT_SAME_CLASS;
+    if (newClass == ITEM_CLASS_WEAPON && newSubClass != ITEM_SUBCLASS_WEAPON_FISHING_POLE && oldSubClass != ITEM_SUBCLASS_WEAPON_FISHING_POLE)
+    {
+        if (newSubClass == oldSubClass || ((newSubClass == ITEM_SUBCLASS_WEAPON_BOW || newSubClass == ITEM_SUBCLASS_WEAPON_GUN || newSubClass == ITEM_SUBCLASS_WEAPON_CROSSBOW) && (oldSubClass == ITEM_SUBCLASS_WEAPON_BOW || oldSubClass == ITEM_SUBCLASS_WEAPON_GUN || oldSubClass == ITEM_SUBCLASS_WEAPON_CROSSBOW)))
+            if (newInventorytype == oldInventorytype || (newInventorytype == INVTYPE_WEAPON && (oldInventorytype == INVTYPE_WEAPONMAINHAND || oldInventorytype == INVTYPE_WEAPONOFFHAND)))
+                return ERR_FAKE_OK;
+            else
+                return ERR_FAKE_BAD_INVENTORYTYPE;
+        else
+            return ERR_FAKE_BAD_SUBLCASS;
+    }
+    else if (newClass == ITEM_CLASS_ARMOR)
+        if (newSubClass == oldSubClass)
+            if (newInventorytype == oldInventorytype || (newInventorytype == INVTYPE_CHEST && oldInventorytype == INVTYPE_ROBE) || (newInventorytype == INVTYPE_ROBE && oldInventorytype == INVTYPE_CHEST))
+                return ERR_FAKE_OK;
+            else
+                return ERR_FAKE_BAD_INVENTORYTYPE;
+        else
+            return ERR_FAKE_BAD_SUBLCASS;
+    return ERR_FAKE_BAD_CLASS;
+}
+
+Bag* Player::GetBagByPos(uint8 bag) const
+{
+    if ((bag >= INVENTORY_SLOT_BAG_START && bag < INVENTORY_SLOT_BAG_END)
+        || (bag >= BANK_SLOT_BAG_START && bag < BANK_SLOT_BAG_END))
+        if (Item* item = GetItemByPos(INVENTORY_SLOT_BAG_0, bag))
+            return item->ToBag();
+    return NULL;
+}
+
 void Player::HandleStealthedUnitsDetection()
 {
     UnitList stealthedUnits;
@@ -23932,6 +23995,25 @@ void Player::UpdateSpecCount(uint8 count)
     SetSpecsCount(count);
 
     SendTalentsInfoData(false);
+}
+
+void Player::LoadTransmogrification()
+{
+    //uint32 playerGuid = GetGUIDLow();
+    
+    for (uint8 Slot = EQUIPMENT_SLOT_START; Slot < EQUIPMENT_SLOT_END; Slot++)
+    {
+         if (Item* oldItem = this->GetItemByPos(INVENTORY_SLOT_BAG_0, Slot))
+         {
+            uint32 itemEntry = oldItem->GetGUIDLow();
+
+            ItemFakeEntryContainer::const_iterator itr = sObjectMgr._itemFakeEntryStore.find(itemEntry);
+            if (itr != sObjectMgr._itemFakeEntryStore.end())
+            {
+                this->SetUInt32Value(PLAYER_VISIBLE_ITEM_1_ENTRYID + (Slot * 2), itr->second);
+            }
+         }
+    }
 }
 
 void Player::RemoveAtLoginFlag(AtLoginFlags f, bool in_db_also /*= false*/)

@@ -99,6 +99,20 @@ enum BuyBankSlotResult
     ERR_BANKSLOT_OK                 = 3
 };
 
+enum TransmogrificationResult //transmogrification
+{
+    ERR_FAKE_NEW_BAD_QUALITY,
+    ERR_FAKE_OLD_BAD_QUALITY,
+    ERR_FAKE_SAME_DISPLAY,
+    ERR_FAKE_SAME_DISPLAY_FAKE,
+    ERR_FAKE_CANT_USE,
+    ERR_FAKE_NOT_SAME_CLASS,
+    ERR_FAKE_BAD_CLASS,
+    ERR_FAKE_BAD_SUBLCASS,
+    ERR_FAKE_BAD_INVENTORYTYPE,
+    ERR_FAKE_OK
+};
+
 enum PlayerSpellState
 {
     PLAYERSPELL_UNCHANGED       = 0,
@@ -1206,6 +1220,7 @@ class Player : public Unit
         Item* GetItemByLimitedCategory(uint32 limitedCategory) const;
         Item* GetItemByPos(uint16 pos) const;
         Item* GetItemByPos(uint8 bag, uint8 slot) const;
+        Bag*  GetBagByPos(uint8 slot) const; // transmogrification
         uint32 GetItemDisplayIdInSlot(uint8 bag, uint8 slot) const;
         Item* GetWeaponForAttack(WeaponAttackType attackType) const { return GetWeaponForAttack(attackType, false, false); }
         Item* GetWeaponForAttack(WeaponAttackType attackType, bool nonbroken, bool useable) const;
@@ -2410,6 +2425,8 @@ class Player : public Unit
         void SetTitle(uint32 titleId, bool lost = false);
         void SetTitle(CharTitlesEntry const* title, bool lost = false, bool send = true);
 
+        uint32 SuitableForTransmogrification(Item* oldItem, Item* newItem); // transmogrification
+
         virtual UnitAI* AI() override { if (m_charmInfo) return m_charmInfo->GetAI(); return nullptr; }
         virtual CombatData* GetCombatData() override { if (m_charmInfo && m_charmInfo->GetCombatData()) return m_charmInfo->GetCombatData(); return m_combatData; }
 
@@ -2478,6 +2495,9 @@ class Player : public Unit
         bool HasQueuedSpell();
         void ClearQueuedSpell();
         void CastQueuedSpell(SpellCastTargets& targets);
+
+        void LoadTransmogrification();
+
     protected:
         /*********************************************************/
         /***               BATTLEGROUND SYSTEM                 ***/

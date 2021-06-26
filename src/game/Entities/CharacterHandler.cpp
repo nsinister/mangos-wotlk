@@ -934,6 +934,8 @@ void WorldSession::HandlePlayerLogin(LoginQueryHolder* holder)
     if (!pCurrChar->IsStandState() && !pCurrChar->IsStunned())
         pCurrChar->SetStandState(UNIT_STAND_STATE_STAND);
 
+    pCurrChar->LoadTransmogrification();
+
     m_playerLoading = false;
 
     // Handle Login-Achievements (should be handled after loading)
